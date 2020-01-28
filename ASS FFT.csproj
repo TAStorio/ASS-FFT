@@ -4,7 +4,4 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <RootNamespace>ASS_FFT</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="CoreRCON" Version="*"/>
-  </ItemGroup>
 </Project>
