@@ -24,7 +24,11 @@ namespace ASS_FFT.RCON {
 		public event StringOutput Errors;
 
 		public RCON(string IP_Adress, int port, string password) {
-			this.endPoint = new IPEndPoint(IPAddress.Parse(IP_Adress), port);
+			IPAddress address = null;
+			if (!IPAddress.TryParse(IP_Adress, out address)) {
+				throw new ArgumentException("Invalid address");
+			}
+			this.endPoint = new IPEndPoint(address, port);
 			this.password = password;
 		}
 
@@ -39,9 +43,16 @@ namespace ASS_FFT.RCON {
 			await this.socket.ConnectAsync(this.endPoint);
 
 			// Wait for successful authentication
-			await SendPacketAsync(new RCONPacket(0, RCONPacketType.Auth, password));
-			//_networkConsumerTask = Task.WhenAll(writing, reading);
-			//await _authenticationTask.Task;
+			await SendPacketAsync(new RCONPacket(RCONPacketType.Auth, password));
+		}
+
+		public void Start() {
+			if (!Connected) {
+				throw new InvalidOperationException("Not connected to a RCON server");
+			}
+
+			Task.Run(() => Recieve());
+
 			/*if (_beaconIntervall != 0) {
 				Task.Run(() =>
 					 WatchForDisconnection(_beaconIntervall).ConfigureAwait(false)
@@ -49,9 +60,29 @@ namespace ASS_FFT.RCON {
 			}*/
 		}
 
+		private async Task Recieve() {
+			byte[] buffer = new byte[4096];
+			while (Connected) {
+				Console.WriteLine("B");
+				await this.socket.ReceiveAsync(buffer, SocketFlags.None);
+				/*byte[] newbuff = new byte[14];
+				for (int i = 0; i < 14; i++) {
+					newbuff[i] = buffer[i];
+				}*/
+				var packet = RCONPacket.FromBytes(buffer);
+				Console.WriteLine(packet.Type);
+				Console.WriteLine(packet.Id);
+				Console.WriteLine(packet.ToString());
+			}
+		}
+
 		public void Dispose() {
 			this.socket.Shutdown(SocketShutdown.Both);
 			this.socket.Dispose();
+		}
+
+		public async Task SendCommandAsync(string command) {
+			await this.SendPacketAsync(new RCONPacket(RCONPacketType.ExecCommand, command));
 		}
 
 		private async Task SendPacketAsync(RCONPacket packet) {

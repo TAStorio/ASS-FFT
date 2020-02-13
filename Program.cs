@@ -7,7 +7,11 @@ namespace ASS_FFT {
 			Console.WriteLine("Connecting and authentificating");
 			client.ConnectAsync().Wait();
 			client.ServerOutput += MessageGet;
-			Console.WriteLine("Press any key to exit...");
+			client.Start();
+			Console.WriteLine("Press any key to continue...");
+			Console.ReadKey();
+			client.SendCommandAsync("/fooping").Wait();
+			Console.WriteLine("Press any key to continue...");
 			Console.ReadKey();
 		}
 

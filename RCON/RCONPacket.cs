@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 
 namespace ASS_FFT.RCON {
 	public class RCONPacket {
+		private static int GUID = 1;
+
 		public const int MAX_PACKET_SIZE = 4200;
 
 		public string Body { get; private set; }
@@ -22,6 +24,13 @@ namespace ASS_FFT.RCON {
 			this.Type = type;
 			this.Body = body;
 		}
+
+		/// <summary>
+		/// Create a new packet and generate a GUID for it.
+		/// </summary>
+		/// <param name="type">What the server is supposed to do with the body of this packet.</param>
+		/// <param name="body">The actual information held within.</param>
+		public RCONPacket(RCONPacketType type, string body) : this(GetGUID(), type, body) {}
 
 		public override string ToString() => Body;
 
@@ -56,7 +65,7 @@ namespace ASS_FFT.RCON {
 		}
 
 		/// <summary>
-		/// Serializes a packet to a byte array for transporting over a network.  Body is serialized as UTF8.
+		/// Serializes a packet to a byte array for transporting over a network. Body is serialized as UTF8.
 		/// </summary>
 		/// <returns>Byte array with each field.</returns>
 		internal byte[] ToBytes() {
@@ -77,6 +86,14 @@ namespace ASS_FFT.RCON {
 
 				return packet.ToArray();
 			}
+		}
+
+		/// <summary>
+		/// Provides a new GUID to use for a packet
+		/// </summary>
+		/// <returns>Created packet.</returns>
+		public static int GetGUID() {
+			return GUID++;
 		}
 	}
 	
