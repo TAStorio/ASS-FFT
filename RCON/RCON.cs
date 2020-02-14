@@ -64,7 +64,6 @@ namespace ASS_FFT.RCON {
 			byte[] buffer = new byte[4096];
 			var builder = new RCONPacketBuilder();
 			while (Connected) {
-				Console.WriteLine("B");
 				int bytes = await this.socket.ReceiveAsync(buffer, SocketFlags.None);
 				builder.FeedBytes(buffer, bytes);
 				while (builder.AvailablePackets > 0) {
