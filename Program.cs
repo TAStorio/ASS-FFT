@@ -11,7 +11,8 @@ namespace ASS_FFT {
 			Console.WriteLine("Press any key to continue...");
 			Console.ReadKey();
 			client.SendCommandAsync("/fooping").Wait();
-			Console.WriteLine("Press any key to continue...");
+			client.SendCommandAsync("/h").Wait();
+			client.SendCommandAsync("/fooping").Wait();
 			Console.ReadKey();
 		}
 

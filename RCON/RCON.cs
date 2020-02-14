@@ -62,17 +62,17 @@ namespace ASS_FFT.RCON {
 
 		private async Task Recieve() {
 			byte[] buffer = new byte[4096];
+			var builder = new RCONPacketBuilder();
 			while (Connected) {
 				Console.WriteLine("B");
-				await this.socket.ReceiveAsync(buffer, SocketFlags.None);
-				/*byte[] newbuff = new byte[14];
-				for (int i = 0; i < 14; i++) {
-					newbuff[i] = buffer[i];
-				}*/
-				var packet = RCONPacket.FromBytes(buffer);
-				Console.WriteLine(packet.Type);
-				Console.WriteLine(packet.Id);
-				Console.WriteLine(packet.ToString());
+				int bytes = await this.socket.ReceiveAsync(buffer, SocketFlags.None);
+				builder.FeedBytes(buffer, bytes);
+				while (builder.AvailablePackets > 0) {
+					RCONPacket packet = builder.GetPacket();
+					Console.WriteLine(packet.Type);
+					Console.WriteLine(packet.Id);
+					Console.WriteLine(packet.ToString());
+				}
 			}
 		}
 
