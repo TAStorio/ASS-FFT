@@ -2,14 +2,15 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 //Class used for connecting to Factorio RCON
 namespace ASS_FFT.RCON {
 	public class RCON : IDisposable {
-		private Socket socket;
 
 		//Settings
 		private int timeout = 100;
+		private int heartbeatInterval = 500;
 		private IPEndPoint endPoint;
 		private string password;
 
@@ -18,10 +19,12 @@ namespace ASS_FFT.RCON {
 			if (this.socket == null) return false;
 			return this.socket.Connected;
 		}}
+		private Random IDGenerator = new Random();
+		private Socket socket;
 
-		//Events
-		public event StringOutput ServerOutput;
-		public event StringOutput Errors;
+		//Packet Handling
+		private Dictionary<int, TaskCompletionSource<RCONPacket>> pendingPackets = new Dictionary<int, TaskCompletionSource<RCONPacket>>();
+		private TaskCompletionSource<bool> authenticationSuccessful;
 
 		public RCON(string IP_Adress, int port, string password) {
 			IPAddress address = null;
@@ -32,7 +35,7 @@ namespace ASS_FFT.RCON {
 			this.password = password;
 		}
 
-		public async Task ConnectAsync() {
+		public async Task StartClient() {
 			if (Connected) {
 				return;
 			}
@@ -42,20 +45,33 @@ namespace ASS_FFT.RCON {
 			this.socket.NoDelay = true;
 			await this.socket.ConnectAsync(this.endPoint);
 
+			Start();
+
 			// Wait for successful authentication
-			await SendPacketAsync(new RCONPacket(RCONPacketType.Auth, password));
+			bool authResult = await Authentificate(password);
+			if (!authResult) {
+				this.socket.Shutdown(SocketShutdown.Both);
+				this.socket.Dispose();
+				throw new UnauthorizedAccessException("Authentification was not successful");
+			}
 		}
 
-		public void Start() {
+		private async Task<bool> Authentificate(string password) {
+			authenticationSuccessful = new TaskCompletionSource<bool>();
+			await this.socket.SendAsync(new RCONPacket(0, RCONPacketType.Auth, password).ToBytes(), SocketFlags.None);
+			return await authenticationSuccessful.Task;
+		}
+
+		private void Start() {
 			if (!Connected) {
 				throw new InvalidOperationException("Not connected to a RCON server");
 			}
 
 			Task.Run(() => Recieve());
 
-			/*if (_beaconIntervall != 0) {
+			/*if (heartbeatInterval != 0) {
 				Task.Run(() =>
-					 WatchForDisconnection(_beaconIntervall).ConfigureAwait(false)
+					WatchForDisconnection(heartbeatInterval).ConfigureAwait(false)
 				);
 			}*/
 		}
@@ -68,10 +84,25 @@ namespace ASS_FFT.RCON {
 				builder.FeedBytes(buffer, bytes);
 				while (builder.AvailablePackets > 0) {
 					RCONPacket packet = builder.GetPacket();
-					Console.WriteLine(packet.Type);
-					Console.WriteLine(packet.Id);
-					Console.WriteLine(packet.ToString());
+					if (packet.Type == RCONPacketType.AuthResponse) {
+						authenticationSuccessful.SetResult(packet.Id == 0);
+					} else {
+						RecievedPacket(packet);
+					}
 				}
+			}
+		}
+
+		private void RecievedPacket(RCONPacket packet) {
+			if (pendingPackets.ContainsKey(packet.Id)) {
+				pendingPackets[packet.Id].SetResult(packet);
+				pendingPackets.Remove(packet.Id);
+			}
+		}
+
+		private async Task WatchForDisconnection(int interval) {
+			while (Connected) {
+
 			}
 		}
 
@@ -80,14 +111,28 @@ namespace ASS_FFT.RCON {
 			this.socket.Dispose();
 		}
 
-		public async Task SendCommandAsync(string command) {
-			await this.SendPacketAsync(new RCONPacket(RCONPacketType.ExecCommand, command));
+		/// <summary>
+		/// Sends a command to the RCON server
+		/// </summary>
+		/// <returns>A task with the response packet</returns>
+		public async Task<RCONPacket> SendCommandAsync(string command, RCONPacketType type = RCONPacketType.ExecCommand) {
+			RCONPacket packet = new RCONPacket(GenerateID(), type, command);
+			var task = new TaskCompletionSource<RCONPacket>();
+			pendingPackets.Add(packet.Id, task);
+			await this.socket.SendAsync(packet.ToBytes(), SocketFlags.None);
+			return await task.Task;
 		}
 
-		private async Task SendPacketAsync(RCONPacket packet) {
-			await this.socket.SendAsync(packet.ToBytes(), SocketFlags.None);
+		/// <summary>
+		/// Generates a random id that is not currently used in a pending request
+		/// </summary>
+		/// <returns>Integer ID</returns>
+		private int GenerateID() {
+			int id = 0;
+			do {
+				id = IDGenerator.Next();
+			} while (id != 0 && pendingPackets.ContainsKey(id));
+			return id;
 		}
 	}
-
-	public delegate void StringOutput(string output);
 }

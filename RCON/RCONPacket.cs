@@ -25,13 +25,6 @@ namespace ASS_FFT.RCON {
 			this.Body = body;
 		}
 
-		/// <summary>
-		/// Create a new packet and generate a GUID for it.
-		/// </summary>
-		/// <param name="type">What the server is supposed to do with the body of this packet.</param>
-		/// <param name="body">The actual information held within.</param>
-		public RCONPacket(RCONPacketType type, string body) : this(GetGUID(), type, body) {}
-
 		public override string ToString() => Body;
 
 		/// <summary>
@@ -86,14 +79,6 @@ namespace ASS_FFT.RCON {
 
 				return packet.ToArray();
 			}
-		}
-
-		/// <summary>
-		/// Provides a new GUID to use for a packet
-		/// </summary>
-		/// <returns>Created packet.</returns>
-		public static int GetGUID() {
-			return GUID++;
 		}
 	}
 	
