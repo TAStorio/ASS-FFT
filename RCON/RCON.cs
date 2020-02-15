@@ -10,7 +10,6 @@ namespace ASS_FFT.RCON {
 
 		//Settings
 		private int timeout = 100;
-		private int heartbeatInterval = 500;
 		private IPEndPoint endPoint;
 		private string password;
 
@@ -50,8 +49,7 @@ namespace ASS_FFT.RCON {
 			// Wait for successful authentication
 			bool authResult = await Authentificate(password);
 			if (!authResult) {
-				this.socket.Shutdown(SocketShutdown.Both);
-				this.socket.Dispose();
+				Dispose();
 				throw new UnauthorizedAccessException("Authentification was not successful");
 			}
 		}
@@ -68,12 +66,6 @@ namespace ASS_FFT.RCON {
 			}
 
 			Task.Run(() => Recieve());
-
-			/*if (heartbeatInterval != 0) {
-				Task.Run(() =>
-					WatchForDisconnection(heartbeatInterval).ConfigureAwait(false)
-				);
-			}*/
 		}
 
 		private async Task Recieve() {
@@ -97,12 +89,6 @@ namespace ASS_FFT.RCON {
 			if (pendingPackets.ContainsKey(packet.Id)) {
 				pendingPackets[packet.Id].SetResult(packet);
 				pendingPackets.Remove(packet.Id);
-			}
-		}
-
-		private async Task WatchForDisconnection(int interval) {
-			while (Connected) {
-
 			}
 		}
 
